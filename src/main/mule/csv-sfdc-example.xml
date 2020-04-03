@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:ftp="http://www.mulesoft.org/schema/mule/ftp" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ftp http://www.mulesoft.org/schema/mule/ftp/current/mule-ftp.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd">
+	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="7d41d2df-1c9d-49a5-9920-c7d274f20583" >
+		<salesforce:cached-basic-connection username="payjain0@publicissapient.com" password="Zeronzero@9782" securityToken="esSigg2ddv5P913gZ0zbBZOYp" />
+	</salesforce:sfdc-config>
+	<file:config name="File_Config" doc:name="File Config" doc:id="140c77a0-7a8e-45c1-b9bc-959490ea49d1" >
+		<file:connection workingDir="C:\Users\singh\AnypointStudio\studio-workspace\csv-sfdc-example" />
+	</file:config>
+	<file:config name="File_Config1" doc:name="File Config" doc:id="df72dc97-6d18-4bbb-af96-b4e253d07538" >
+		<file:connection workingDir="C:\Users\singh\AnypointStudio\studio-workspace\csv-sfdc-example" />
+	</file:config>
+	<flow name="csv-sfdc-exampleFlow1" doc:id="2da1165a-fbef-4d5f-bb3c-a3b008d0d990" >
+		<file:listener doc:name="On New or Updated File" doc:id="b5a09ce7-7574-4ed9-8b10-8db273385765" config-ref="File_Config" directory="src\main\resources\input" autoDelete="true">
+			<scheduling-strategy>
+				<fixed-frequency frequency="20000" />
+			</scheduling-strategy>
+		</file:listener>
+		<ee:transform doc:name="Transform Message" doc:id="d4c3c8c9-c11d-46e4-96f0-028af95e1025" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<batch:job jobName="csv-sfdc-exampleBatch_Job" doc:id="433a158e-7384-4238-8fc5-dd1de53e0922" >
+			<batch:process-records >
+				<batch:step name="Batch_Step" doc:id="0d32b7e4-655e-43e4-b818-ef327d57a9c5" >
+					<ee:transform doc:name="Transform Message" doc:id="0370afb7-76af-4a14-b9f5-b4e26940c99a" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	LastName: payload."Last Name",
+	FirstName: payload."First Name",
+	MailingCity: payload."Address City",
+	MailingState: payload."State or Province",
+	MailingPostalCode: payload."ZIP or Postal Code",
+	MailingCountry: payload."Country or Region",
+	Phone: payload."Office Phone",
+	Fax: payload.Fax,
+	MobilePhone: payload."Mobile Phone",
+	Title: payload."Job Title"
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<batch:aggregator doc:name="Batch Aggregator" doc:id="7749782c-3136-4912-af84-6c3d75d12e0c" size="4">
+						<salesforce:create doc:name="Create" doc:id="9d501296-cec4-4854-8a71-396b59b1907c" config-ref="Salesforce_Config" type="Contact" />
+						<ee:transform doc:name="Transform Message" doc:id="94174905-d48f-4b53-9173-2b2eee7e91e6">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+						<logger level="INFO" doc:name="Logger" doc:id="761b7e71-e4cf-4593-9f39-325a96499b8b" message="#[payload]" />
+					</batch:aggregator>
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete >
+				<logger level="INFO" doc:name="Logger" doc:id="2ed579e2-e23d-4a6c-9e0a-f5deca6be62a" message="Job completed"/>
+			</batch:on-complete>
+		</batch:job>
+	</flow>
+</mule>
